@@ -53,8 +53,8 @@ const START_STRINGS_LEN: usize = START_STRINGS.len();
 
 const ITEM_COLOR_NON_HIGHLIGHT: color::LightBlue = color::LightBlue;
 const ITEM_COLOR_HIGHLIGHT: color::LightRed = color::LightRed;
-const ITEM_BCOLOR_FINISHED: color::Blue = color::Blue;
-const ITEM_BCOLOR_NORMAL: color::Reset = color::Reset;
+const ITEM_FCOLOR_FINISHED: color::Blue = color::Blue;
+const ITEM_FCOLOR_ONGOING: color::LightGreen = color::LightGreen;
 
 /**
  *
@@ -83,13 +83,6 @@ impl TodoItem {
             is_done: false,
         }
     }
-
-    fn get_bg_color(&self) -> TermColorBg {
-        match self.is_done {
-            true => TermColorBg::Blue,
-            false => TermColorBg::DefaultBg,
-        }
-    }
 }
 
 const TODOS: [&'static str; 6] = [
@@ -101,22 +94,41 @@ const TODOS: [&'static str; 6] = [
     "SQL 2. Learn SQL via PostgreSQL",
 ];
 
-#[allow(dead_code)]
 enum TermColorBg {
-    Red,
-    Blue,
-    Magenta,
-    DefaultBg,
+    Highlight,
+    Normal,
 }
 impl std::fmt::Display for TermColorBg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TermColorBg::Red => write!(f, "{}", color::Bg(color::Red)),
-            TermColorBg::Blue => write!(f, "{}", color::Bg(color::Blue)),
-            TermColorBg::Magenta => write!(f, "{}", color::Bg(color::Magenta)),
-            TermColorBg::DefaultBg => write!(f, "{}", color::Bg(color::Reset)), // do not write anything
+            TermColorBg::Highlight => write!(f, "{}", color::Bg(ITEM_COLOR_HIGHLIGHT)),
+            //            TermColorBg::Normal => write!(f, "{}", color::Bg(ITEM_COLOR_NON_HIGHLIGHT)),
+            TermColorBg::Normal => write!(f, "{}", color::Bg(color::Reset)),
         }
     }
+}
+
+enum TermColorFg {
+    Ongoing,
+    Finished,
+}
+impl std::fmt::Display for TermColorFg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TermColorFg::Ongoing => write!(f, "{}", color::Fg(ITEM_FCOLOR_ONGOING)),
+            TermColorFg::Finished => write!(f, "{}", color::Fg(ITEM_FCOLOR_FINISHED)), // do not write anything
+        }
+    }
+}
+
+fn clear_line_after(stdout: &mut RawTerminal<Stdout>, line_idx: u16) -> Result<()> {
+    write!(
+        stdout,
+        "{}{}",
+        cursor::Goto(1, line_idx),
+        clear::AfterCursor
+    )?;
+    Ok(())
 }
 
 fn render_list(
@@ -124,22 +136,33 @@ fn render_list(
     items: &Vec<TodoItem>,
     selected_line_idx: usize,
 ) -> Result<()> {
+    write!(stdout, "{}", clear::AfterCursor)?;
+
     for (idx, todo) in items.iter().enumerate() {
-        let fgcolor = if idx == selected_line_idx {
-            TermColorBg::Red
+        let fgcolor = if todo.is_done {
+            TermColorFg::Finished
         } else {
-            TermColorBg::DefaultBg
+            TermColorFg::Ongoing
+        };
+
+        let bgcolor = if idx == selected_line_idx {
+            TermColorBg::Highlight
+        } else {
+            TermColorBg::Normal
         };
 
         writeln!(
             stdout,
-            "{} {}{}{}\r",
+            "{} {}{}{}{}{}{}\r",
             cursor::Goto(1, START_STRINGS_LEN as u16 + idx as u16 + 1),
             //clear::All,
             //cursor::Goto(1, 2),
             fgcolor,
+            bgcolor,
             cursor::Hide,
             todo.name,
+            color::Fg(color::Reset),
+            color::Bg(color::Reset)
         )?;
     }
 
@@ -162,7 +185,7 @@ fn main() -> Result<()> {
             .iter()
             .map(|s| strNR!(s))
             .fold(String::new(), |mut acc, next| {
-                acc.push_str(&strNR!(next));
+                acc.push_str(&next);
                 acc
             });
 
@@ -172,7 +195,7 @@ fn main() -> Result<()> {
         cursor::Goto(1, 1),
         clear::All,
         //
-        color::Fg(color::LightGreen),
+        color::Fg(color::White),
         style::Bold,
         //
         start_print,
@@ -186,10 +209,9 @@ fn main() -> Result<()> {
 
     if todos.is_empty() {
         todos.push(TodoItem::new("-- There are no things to be done yet..."));
-    } else {
-        render_list(&mut stdout, &todos, 1)?;
     }
 
+    render_list(&mut stdout, &todos, 0)?;
     //    for todo in todos.iter() {
     //        write!(
     //            stdout,
@@ -208,36 +230,44 @@ fn main() -> Result<()> {
     let mut list_changed = false;
 
     for c in stdin.keys() {
-        //write!(
-        //    stdout,
-        //    "{}",
-
-        // cursor::Goto(5, 3),
-        //clear::CurrentLine
-        //)?;
-
         match c? {
             Key::Esc => {
-                write!(
+                writeln!(
                     stdout,
-                    "{}{}{}{}",
+                    //                    "{}{}{}{}",
+                    "{}{}",
                     clear::All,
                     cursor::Goto(1, 1),
-                    color::Bg(color::Reset),
-                    color::Fg(color::Reset)
+                    //                    color::Bg(color::Reset),
+                    //                    color::Fg(color::Reset)
                 )?;
                 break;
             }
-            /* Enter new item */
             Key::Char(c) => {
-                if c == 'n' {
+                if c == 'd' {
+                    if !todos.is_empty() && selected_line_idx <= todos.len() - 1 {
+                        todos.remove(selected_line_idx);
+                        list_changed = true;
+                    }
+                }
+                /* NOTE:
+                 * Entering new item
+                 */
+                else if c == 'n' {
                     let mut user_input = String::with_capacity(300);
+                    let curr_idx = (START_STRINGS_LEN + todos.len()) as u16 + 5;
                     /* should be more than enough */
 
                     loop {
                         if let Some(Ok(k)) = io::stdin().keys().next() {
                             match k {
                                 Key::Esc => {
+                                    write!(
+                                        stdout,
+                                        "{}{}",
+                                        cursor::Goto(1, curr_idx),
+                                        clear::AfterCursor
+                                    )?;
                                     break;
                                 }
                                 Key::Char(ch) => {
@@ -248,8 +278,14 @@ fn main() -> Result<()> {
                                 }
                                 _ => {}
                             }
-                        } else {
-                            //
+
+                            writeln!(
+                                stdout,
+                                "{}{}You're entering (press END to finish entering):{}",
+                                cursor::Goto(1, curr_idx),
+                                clear::AfterCursor,
+                                user_input
+                            )?;
                         }
                     }
 
@@ -257,15 +293,20 @@ fn main() -> Result<()> {
                     if !user_input.is_empty() {
                         user_input.push_str("\r");
                         todos.push(TodoItem::new(&user_input));
+                        cursor::Goto(1, (START_STRINGS_LEN + 1) as u16);
+                        list_changed = true;
                     }
                 }
-                //            }
-                //            Key::Char(c) => {
+                /* NOTE:
+                 * Marking item as finished / unfinished
+                 */
                 else if c == 'f' {
-                    todos
+                    let fini = &mut todos
                         .get_mut(selected_line_idx)
                         .ok_or(Error::new(ErrorKind::NotFound, ""))?
-                        .is_done = true;
+                        .is_done;
+                    *fini = if *fini { false } else { true };
+
                     list_changed = true;
                 }
             }
@@ -305,6 +346,7 @@ fn main() -> Result<()> {
 
         /* user changed selection OR new item; re-render list */
         if list_changed {
+            clear_line_after(&mut stdout, START_STRINGS_LEN as u16 + 1)?;
             render_list(&mut stdout, &todos, selected_line_idx)?;
         }
 
