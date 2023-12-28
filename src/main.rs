@@ -26,6 +26,9 @@ const TODOS: [&'static str; 6] = [
 //
 //
 
+// TODO: Handle case where zero todoitem in list (pressing UP / DOWN would panic)
+//
+
 fn main() -> Result<()> {
     let stdin = stdin();
     let mut stdout = stdout().into_raw_mode()?;
@@ -64,18 +67,6 @@ fn main() -> Result<()> {
     }
 
     render_list(&mut stdout, &todos, 0)?;
-    //    for todo in todos.iter() {
-    //        write!(
-    //            stdout,
-    //            " {}{}{}",
-    //clear::All,
-    //cursor::Goto(1, 2),
-    //            cursor::Hide,
-    //            todo.name,
-    //            todo.get_bg_color()
-    //        )?;
-    //        stdout.flush()?;
-    //    }
 
     // this is the selected line
     let mut selected_line_idx = 0usize;
@@ -114,6 +105,7 @@ fn main() -> Result<()> {
                         if let Some(Ok(k)) = io::stdin().keys().next() {
                             match k {
                                 Key::Esc => {
+                                    user_input.shrink_to_fit();
                                     write!(
                                         stdout,
                                         "{}{}",
@@ -162,7 +154,6 @@ fn main() -> Result<()> {
                     list_changed = true;
                 }
             }
-            // Key::Ctrl(c) => println!("*{}\r", c),
             Key::Left => println!("<=\r"),
             Key::Right => println!("=>\r"),
             //
@@ -192,7 +183,6 @@ fn main() -> Result<()> {
             }
             //
             //
-            Key::Backspace => println!("x\r"),
             _ => {}
         }
 
