@@ -101,6 +101,13 @@ fn main() -> Result<()> {
                     let curr_idx = (START_STRINGS_LEN + todos.len()) as u16 + 5;
                     /* should be more than enough */
 
+                    writeln!(
+                        stdout,
+                        "{}{}You're entering (press ESC to finish entering):{}",
+                        cursor::Goto(1, curr_idx),
+                        clear::AfterCursor,
+                        user_input
+                    )?;
                     loop {
                         if let Some(Ok(k)) = io::stdin().keys().next() {
                             match k {
@@ -125,7 +132,7 @@ fn main() -> Result<()> {
 
                             writeln!(
                                 stdout,
-                                "{}{}You're entering (press END to finish entering):{}",
+                                "{}{}You're entering (press ESC to finish entering):{}",
                                 cursor::Goto(1, curr_idx),
                                 clear::AfterCursor,
                                 user_input
