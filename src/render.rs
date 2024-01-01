@@ -5,12 +5,13 @@ use termion::{clear, color, cursor, raw::RawTerminal};
 use crate::todoitem::TodoItem;
 
 pub const SEP: &'static str = "=====================================";
-pub const START_STRINGS: [&'static str; 8] = [
+pub const START_STRINGS: [&'static str; 9] = [
     "Welcome to Terminal Todo List v1.0",
     "Made by: Lucius Y. Men, Powered by: Rust",
     SEP,
     " > Use UP and DOWN to select a different item",
     " > Press F when an item is selected, to mark it as COMPLETE",
+    " > Press D when an item is selected, to DELETE said item",
     " > Press N to start typing a new item to be added to the todo list; press ESC to finish typing",
     " > Press ESC to exit program.",
     SEP
