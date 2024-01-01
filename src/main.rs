@@ -77,12 +77,9 @@ fn main() -> Result<()> {
             Key::Esc => {
                 writeln!(
                     stdout,
-                    //                    "{}{}{}{}",
                     "{}{}",
                     clear::All,
                     cursor::Goto(1, 1),
-                    //                    color::Bg(color::Reset),
-                    //                    color::Fg(color::Reset)
                 )?;
                 break;
             }

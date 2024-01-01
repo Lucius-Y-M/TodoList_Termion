@@ -83,8 +83,6 @@ pub fn render_list(
             stdout,
             "{} {}{}{}{}{}{}\r",
             cursor::Goto(1, START_STRINGS_LEN as u16 + idx as u16 + 1),
-            //clear::All,
-            //cursor::Goto(1, 2),
             fgcolor,
             bgcolor,
             cursor::Hide,
