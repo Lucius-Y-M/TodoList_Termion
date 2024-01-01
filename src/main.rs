@@ -61,7 +61,7 @@ fn main() -> Result<()> {
     stdout.flush()?;
 
     /* print things in list */
-
+    
     if todos.is_empty() {
         todos.push(TodoItem::new("-- There are no things to be done yet..."));
     }
